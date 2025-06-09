@@ -2,120 +2,93 @@ import sys
 import time
 import random
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QTextEdit
+    QApplication, QWidget, QLabel, QPushButton, QVBoxLayout
 )
 from PyQt6.QtCore import QTimer, Qt
-
 
 class GraReakcji(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Kliknij jak najszybciej!")
+        self.setWindowTitle("Gra na refleks")
 
-        # Lista na najlepsze czasy (maks. 10)
-        self.najlepsze_wyniki = []
-
-        # Układ pionowy
         self.layout = QVBoxLayout()
 
-        # Etykieta z instrukcją / wynikiem
-        self.label = QLabel("Kliknij START, a potem czekaj na zielone koło...")
+        self.label = QLabel("Kliknij START i czekaj na zielone koło...")
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(self.label)
 
-        # Kółko (początkowo szare)
         self.kolko = QLabel()
         self.kolko.setFixedSize(100, 100)
         self.kolko.setStyleSheet("background-color: gray; border-radius: 50px;")
-        self.kolko.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(self.kolko)
 
-        # Przycisk główny
         self.button = QPushButton("START")
         self.button.clicked.connect(self.start_game)
         self.layout.addWidget(self.button)
 
-        # Pole tekstowe do wyników
-        self.wyniki_label = QLabel("Najlepsze czasy:")
-        self.layout.addWidget(self.wyniki_label)
+        self.wynik_label = QLabel("Top 10 wyników:")
+        self.layout.addWidget(self.wynik_label)
 
-        self.wyniki_lista = QTextEdit()
-        self.wyniki_lista.setReadOnly(True)
-        self.layout.addWidget(self.wyniki_lista)
+        self.lista_label = QLabel()
+        self.layout.addWidget(self.lista_label)
 
         self.setLayout(self.layout)
 
         self.timer = QTimer()
-        self.timer.timeout.connect(self.show_kolko)
+        self.timer.timeout.connect(self.zmien_na_zielone)
 
+        self.najlepsze_wyniki = []
+        self.czekaj_na_klik = False
         self.start_time = 0
-        self.zielone = False
 
     def start_game(self):
-        self.label.setText("Czekaj na zielone koło...")
+        self.label.setText("Czekaj na zielone...")
         self.kolko.setStyleSheet("background-color: gray; border-radius: 50px;")
         self.button.setText("Czekaj...")
-        self.button.setEnabled(True)
-        self.button.clicked.disconnect()
-        self.button.clicked.connect(self.zbyt_wczesnie)
+        self.button.setEnabled(False)
 
-        self.zielone = False
+        opoznienie = random.randint(2000, 5000)
+        self.timer.start(opoznienie)
 
-        wait_time = random.randint(2000, 5000)
-        self.timer.start(wait_time)
-
-    def show_kolko(self):
+    def zmien_na_zielone(self):
         self.timer.stop()
         self.kolko.setStyleSheet("background-color: green; border-radius: 50px;")
         self.label.setText("KLIKNIJ TERAZ!")
         self.button.setText("KLIKNIJ!")
-        self.zielone = True
+        self.button.setEnabled(True)
         self.start_time = time.time()
-
+        self.czekaj_na_klik = True
         self.button.clicked.disconnect()
         self.button.clicked.connect(self.zmierz_czas)
 
     def zmierz_czas(self):
-        if self.zielone:
-            reaction_time = round((time.time() - self.start_time) * 1000)
-            self.label.setText(f"Brawo! Czas reakcji: {reaction_time} ms")
-            self.zapisz_wynik(reaction_time)
+        if self.czekaj_na_klik:
+            czas = round((time.time() - self.start_time) * 1000)
+            self.label.setText(f"Twój czas: {czas} ms")
+            self.dodaj_wynik(czas)
         else:
             self.label.setText("Zbyt wcześnie!")
 
         self.kolko.setStyleSheet("background-color: gray; border-radius: 50px;")
         self.button.setText("START")
+        self.button.setEnabled(True)
+        self.czekaj_na_klik = False
         self.button.clicked.disconnect()
         self.button.clicked.connect(self.start_game)
-        self.zielone = False
 
-    def zapisz_wynik(self, czas):
-        # Dodaj nowy czas
+    def dodaj_wynik(self, czas):
         self.najlepsze_wyniki.append(czas)
-        # Sortuj rosnąco
         self.najlepsze_wyniki.sort()
-        # Tylko 10 najlepszych
         self.najlepsze_wyniki = self.najlepsze_wyniki[:10]
-        # Wyświetl
-        self.aktualizuj_tabele()
 
-    def aktualizuj_tabele(self):
         tekst = ""
         for i, wynik in enumerate(self.najlepsze_wyniki, start=1):
             tekst += f"{i}. {wynik} ms\n"
-        self.wyniki_lista.setText(tekst)
-
-    def zbyt_wczesnie(self):
-        self.timer.stop()
-        self.label.setText("Zbyt wcześnie!")
-        self.kolko.setStyleSheet("background-color: red; border-radius: 50px;")
-        self.button.setText("START")
-        self.button.clicked.disconnect()
-        self.button.clicked.connect(self.start_game)
-
+        self.lista_label.setText(tekst)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     okno = GraReakcji()
     okno.show()
     sys.exit(app.exec())
+
